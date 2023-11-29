@@ -315,3 +315,5 @@ class DeepSpeedZeroConfig(DeepSpeedConfigModel):
         if offload_config and offload_config.ratio < 1.0:
             assert values.get("stage") == ZeroStageEnum.weights, "Partial offloading only supported for ZeRO Stage 3."
         return values
+
+transformer_layer_cls = {'LlamaDecoderLayer'}

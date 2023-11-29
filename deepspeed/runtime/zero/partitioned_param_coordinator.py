@@ -188,7 +188,9 @@ class PartitionedParameterCoordinator:
             raise RuntimeError(f"attempted to record trace when status = {self.__trace_mode}")
 
         step_id = self.__step_id_module_fetched_for[sub_module.id].popleft()
-        for param in sorted(set(iter_params(sub_module)), key=lambda p: p.ds_id):
+        from .config import transformer_layer_cls
+        recurse = sub_module.__class__.__name__ in transformer_layer_cls
+        for param in sorted(set(iter_params(sub_module, recurse=recurse)), key=lambda p: p.ds_id):
             self.__param_order.append(__class__.__ParamInTrace(param=param, step_id_last_used_at=step_id))
 
     def construct_parameter_trace_from_module_trace(self):
@@ -259,16 +261,18 @@ class PartitionedParameterCoordinator:
         2. kick off fetch for next few parameters we will need later (prefetch)
         3. block on parameters in immediately required sub module
         """
+        from .config import transformer_layer_cls
+        recurse = current_submodule.__class__.__name__ in transformer_layer_cls
         if logger.isEnabledFor(logging.DEBUG):
             debug_rank0(
-                f"{self.__step_id}: M{current_submodule.id}({type(current_submodule).__name__}) P{[p.ds_id for p in iter_params(current_submodule)]} "
+                f"{self.__step_id}: M{current_submodule.id}({type(current_submodule).__name__}) P{[p.ds_id for p in iter_params(current_submodule, recurse=recurse)]} "
                 + str({
                     "avail": f"{self.__n_available_params:.1e}",
                     "queue_sz": f"{len(self.__param_queue or [])}",
                     "inflight": [p.ds_id for p in self.__inflight_param_registry],
                 }))
 
-        params_to_fetch = frozenset(iter_params(current_submodule))
+        params_to_fetch = frozenset(iter_params(current_submodule, recurse=recurse))
         fetch_numel = sum(
             [p.partition_numel() for p in params_to_fetch if p.ds_status == ZeroParamStatus.NOT_AVAILABLE])
         if fetch_numel > 0:
@@ -389,9 +393,11 @@ class PartitionedParameterCoordinator:
     def release_sub_module(self, submodule: Module, backward: bool) -> None:
         """release the parameters of a sub module, assuming they meet conditions to
         be released."""
+        from .config import transformer_layer_cls
+        recurse = submodule.__class__.__name__ in transformer_layer_cls
         params_to_release = (self.__params_to_release(submodule, self.__step_id) if self.is_complete_trace() else set(
-            p.ds_id for p in iter_params(submodule)))
-        for param in iter_params(submodule):
+            p.ds_id for p in iter_params(submodule, recurse=recurse)))
+        for param in iter_params(submodule, recurse=recurse):
             param.ds_active_sub_modules.discard(submodule.id)
             if param.ds_id in params_to_release and not param.is_external_param:
                 self.__release_param(param, backward)
