@@ -4,6 +4,7 @@
 # DeepSpeed Team
 
 import sys
+from typing import Any
 import torch
 from collections import OrderedDict
 from deepspeed.runtime.utils import see_memory_usage
@@ -111,7 +112,7 @@ def _apply_forward_and_backward_to_tensors_only(module, forward_function, backwa
 
 class ZeROOrderedDict(OrderedDict):
 
-    def __init__(self, parent_module=None, *args, **kwargs):
+    def __init__(self, parent_module, *args, **kwargs):
         """A replacement for ``collections.OrderedDict`` to detect external ZeRO params.
 
         Args:
@@ -136,6 +137,10 @@ class ZeROOrderedDict(OrderedDict):
                 print_rank_0(f'Registering external parameter from getter {key} ds_id = {param.ds_id}', force=False)
 
         return param
+
+    def __reduce__(self):
+        r0, _, *r2 = super().__reduce__()
+        return r0, (self._parent_module, ), *r2
 
 
 def _inject_parameters(module, cls):
