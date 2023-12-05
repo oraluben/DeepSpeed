@@ -393,7 +393,7 @@ class DeepSpeedZeRoOffload(object):
             self._register_hooks_recursively(child, count=count,
                     is_transformer_sub_module=is_transformer_sub_module or\
                         module.__class__.__name__ in transformer_layer_cls)
-        if not is_transformer_sub_module:
+        if is_transformer_sub_module:
             return
 
         @instrument_w_nvtx
