@@ -4,6 +4,7 @@
 # DeepSpeed Team
 
 import sys
+from typing import Any
 import torch
 from collections import OrderedDict
 from deepspeed.runtime.utils import see_memory_usage
@@ -129,13 +130,17 @@ class ZeROOrderedDict(OrderedDict):
         if param is None:
             return param
 
-        if param.ds_status == ZeroParamStatus.NOT_AVAILABLE:
+        if getattr(param, 'ds_status', None) == ZeroParamStatus.NOT_AVAILABLE:
             if self._parent_module._parameters._in_forward:
                 register_external_parameter(FWD_MODULE_STACK[-1], param)
                 param.all_gather()
                 print_rank_0(f'Registering external parameter from getter {key} ds_id = {param.ds_id}', force=False)
 
         return param
+
+    def __reduce__(self):
+        r0, _, *r2 = super().__reduce__()
+        return r0, (self._parent_module, ), *r2
 
 
 def _inject_parameters(module, cls):
@@ -377,15 +382,19 @@ class DeepSpeedZeRoOffload(object):
 
         return persistent_params
 
-    def _register_hooks_recursively(self, module, count=[0]):
+    def _register_hooks_recursively(self, module, count=[0], is_transformer_sub_module=False):
         my_count = count[0]
         module.id = my_count
 
         #print(f"{module.__class__} : {module.id}")
-
+        from .config import transformer_layer_cls
         for child in module.children():
             count[0] = count[0] + 1
-            self._register_hooks_recursively(child, count=count)
+            self._register_hooks_recursively(child, count=count,
+                    is_transformer_sub_module=is_transformer_sub_module or\
+                        module.__class__.__name__ in transformer_layer_cls)
+        if is_transformer_sub_module:
+            return
 
         @instrument_w_nvtx
         def _pre_forward_module_hook(module, *args):
