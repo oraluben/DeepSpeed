@@ -261,8 +261,8 @@ class PartitionedParameterCoordinator:
         2. kick off fetch for next few parameters we will need later (prefetch)
         3. block on parameters in immediately required sub module
         """
-        # from .config import transformer_layer_cls
-        # recurse = current_submodule.__class__.__name__ in transformer_layer_cls
+        from .config import transformer_layer_cls
+        recurse = current_submodule.__class__.__name__ in transformer_layer_cls
         # if logger.isEnabledFor(logging.DEBUG):
         #     debug_rank0(
         #         f"{self.__step_id}: M{current_submodule.id}({type(current_submodule).__name__}) P{[p.ds_id for p in iter_params(current_submodule, recurse=recurse)]} "
