@@ -189,7 +189,7 @@ class PartitionedParameterCoordinator:
 
         step_id = self.__step_id_module_fetched_for[sub_module.id].popleft()
         from .config import transformer_layer_cls
-        recurse = sub_module.__class__.__name__ in transformer_layer_cls
+        recurse = sub_module.__class__.__name__ in transformer_layer_cls if transformer_layer_cls else False
         for param in sorted(set(iter_params(sub_module, recurse=recurse)), key=lambda p: p.ds_id):
             self.__param_order.append(__class__.__ParamInTrace(param=param, step_id_last_used_at=step_id))
 
@@ -262,7 +262,7 @@ class PartitionedParameterCoordinator:
         3. block on parameters in immediately required sub module
         """
         from .config import transformer_layer_cls
-        recurse = current_submodule.__class__.__name__ in transformer_layer_cls
+        recurse = current_submodule.__class__.__name__ in transformer_layer_cls if transformer_layer_cls else False
         # if logger.isEnabledFor(logging.DEBUG):
         #     debug_rank0(
         #         f"{self.__step_id}: M{current_submodule.id}({type(current_submodule).__name__}) P{[p.ds_id for p in iter_params(current_submodule, recurse=recurse)]} "
@@ -394,7 +394,7 @@ class PartitionedParameterCoordinator:
         """release the parameters of a sub module, assuming they meet conditions to
         be released."""
         from .config import transformer_layer_cls
-        recurse = submodule.__class__.__name__ in transformer_layer_cls
+        recurse = submodule.__class__.__name__ in transformer_layer_cls if transformer_layer_cls else False
         params_to_release = (self.__params_to_release(submodule, self.__step_id) if self.is_complete_trace() else set(
             p.ds_id for p in iter_params(submodule, recurse=recurse)))
         for param in iter_params(submodule, recurse=recurse):

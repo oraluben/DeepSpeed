@@ -3,8 +3,9 @@
 
 # DeepSpeed Team
 
+import os
 import sys
-from typing import Optional
+from typing import Optional, Set
 from enum import Enum
 from deepspeed.pydantic_v1 import Field, validator, root_validator
 from deepspeed.runtime.config_utils import get_scalar_param, pp_int, DeepSpeedConfigModel
@@ -316,4 +317,11 @@ class DeepSpeedZeroConfig(DeepSpeedConfigModel):
             assert values.get("stage") == ZeroStageEnum.weights, "Partial offloading only supported for ZeRO Stage 3."
         return values
 
-transformer_layer_cls = {'LlamaDecoderLayer'}
+transformer_layer_cls = os.environ.get('TRANSFORMER_LAYER_CLS', None)
+if transformer_layer_cls == '0':
+    transformer_layer_cls = None
+elif transformer_layer_cls:
+    transformer_layer_cls = set(transformer_layer_cls.split(','))
+else:
+    transformer_layer_cls = set()
+transformer_layer_cls: Optional[Set[str]]

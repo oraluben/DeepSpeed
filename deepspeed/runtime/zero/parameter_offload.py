@@ -356,7 +356,7 @@ class DeepSpeedZeRoOffload(object):
 
         #likely one of them should be enough but just to be safe
         self._register_hooks_recursively(self.module)
-        self.module.register_forward_hook(_end_of_forward_hook)
+        # self.module.register_forward_hook(_end_of_forward_hook)
 
         # Add top module to stack trace
         global FWD_MODULE_STACK
@@ -388,11 +388,22 @@ class DeepSpeedZeRoOffload(object):
 
         #print(f"{module.__class__} : {module.id}")
         from .config import transformer_layer_cls
+
+        if transformer_layer_cls is not None and isinstance(module, torch.nn.ModuleList):
+            from collections import Counter
+            classes = list(Counter([i.__class__ for i in iter(module)]).items())
+            if classes and classes[0][1] > 1:
+                transformer_layer_cls.add(classes[0][0].__name__)
+
         for child in module.children():
             count[0] = count[0] + 1
-            self._register_hooks_recursively(child, count=count,
-                    is_transformer_sub_module=is_transformer_sub_module or\
-                        module.__class__.__name__ in transformer_layer_cls)
+            self._register_hooks_recursively(
+                child, count=count,
+                is_transformer_sub_module=transformer_layer_cls is not None and (
+                    is_transformer_sub_module or
+                    module.__class__.__name__ in transformer_layer_cls
+                )
+            )
         if is_transformer_sub_module:
             return
 
