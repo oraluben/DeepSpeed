@@ -130,6 +130,7 @@ class ZeROOrderedDict(OrderedDict):
         if param is None:
             return param
 
+        # if param.ds_status == ZeroParamStatus.NOT_AVAILABLE:
         if getattr(param, 'ds_status', None) == ZeroParamStatus.NOT_AVAILABLE:
             if self._parent_module._parameters._in_forward:
                 register_external_parameter(FWD_MODULE_STACK[-1], param)
@@ -356,7 +357,7 @@ class DeepSpeedZeRoOffload(object):
 
         #likely one of them should be enough but just to be safe
         self._register_hooks_recursively(self.module)
-        # self.module.register_forward_hook(_end_of_forward_hook)
+        self.module.register_forward_hook(_end_of_forward_hook)
 
         # Add top module to stack trace
         global FWD_MODULE_STACK
